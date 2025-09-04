@@ -1,0 +1,17 @@
+{
+  "name": "BioUtil",
+  "version": "0.1.0",
+  "description": "General utilities library for my use on ESP-32 projects",
+  "keywords": "",
+  "authors":
+  [
+    {
+      "name": "Sam Casteel",
+      "email": "BioMyth1@gmail.com",
+      "maintainer": true
+    }
+  ],
+  "license": "MIT",
+  "frameworks": "Arduino",
+  "platforms": "espressif32"
+}
