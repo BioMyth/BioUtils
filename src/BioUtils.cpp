@@ -1,4 +1,4 @@
-#include <BioUtil.h>
+#include <BioUtils.h>
 
 #include <Arduino.h>
 #include <mutex>
@@ -6,7 +6,7 @@
 //#define LED_PIN 2     // Change this to match your board's LED pin, if different
 
 
-namespace BioUtil{
+namespace BioUtils{
 
     AnimationFrame::AnimationFrame(LEDState state, uint16_t msDuration): state(state), msDuration(msDuration){};
 

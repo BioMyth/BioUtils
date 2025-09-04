@@ -1,5 +1,5 @@
-#ifndef __BIO_UTIL_H__
-#define __BIO_UTIL_H__
+#ifndef __BIO_UTILS_H__
+#define __BIO_UTILS_H__
 
 #pragma once
 
@@ -22,7 +22,7 @@ TODO
 - Update main to suspend the system when off instead of just not firing the movement events
 - Add some type of print wrapper for easier disabling
 */
-namespace BioUtil{
+namespace BioUtils{
 
     /*namespace {
         class SerialStream : public std::stringbuf {
