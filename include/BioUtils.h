@@ -5,6 +5,10 @@
 
 #include <Arduino.h>
 #include <mutex>
+#include <functional>
+#include <random>
+#include <limits>
+#include <algorithms>
 
 //#include <sstream>
 //#include <ostream>
@@ -21,6 +25,10 @@ TODO
 - Move LED to the bluetooth/wifi thread
 - Update main to suspend the system when off instead of just not firing the movement events
 - Add some type of print wrapper for easier disabling
+
+- Add a function to be called in a loop instead of threads if desired
+
+- Add a tasker for threading effeciently
 */
 namespace BioUtils{
 
@@ -49,20 +57,6 @@ namespace BioUtils{
     };
 
     static std::ostream sout(&stream);*/
-
-    typedef enum : bool {
-        Off = LOW,
-        On = HIGH
-    } LEDState;
-
-    struct AnimationFrame {
-        AnimationFrame(LEDState state = LEDState::Off, uint16_t msDuration = 0);
-        LEDState state;
-        // Duration of the state in ms
-        uint16_t msDuration;
-    };
-
-    // Isolate local variables to this header
     namespace {
         static bool usedPins[128] = {false};
         
@@ -83,8 +77,45 @@ namespace BioUtils{
         };
 
         static const u_int8_t defaultLEDPin = 2;
+        std::mt19937_64 rand64Bit{ std::random_device{}() };
     };
 
+
+    typedef enum : bool {
+        Off = LOW,
+        On = HIGH
+    } LEDState;
+    
+    typedef unsigned char Byte;
+
+    struct AnimationFrame {
+        AnimationFrame(LEDState state = LEDState::Off, uint16_t msDuration = 0);
+        LEDState state;
+        // Duration of the state in ms
+        uint16_t msDuration;
+    };
+
+    class UUID {
+    protected:
+        Byte uuid[16];
+    public:
+        UUID() {
+            // Generate & fill with random
+            memcpy(&this->uuid[0], &rand64Bit(), 8);
+            memcpy(&this->uuid[8], &rand64Bit(), 8);
+            // Bitset the values to mark it as a type 4 uuid 
+            this->uuid[7] & 0x0F | 0x40;
+            // UUID Version Field 3 bit identification used
+            this->uuid[9] & 0x1F | 0xC0;
+        };
+        operator==(const &UUID b) const{
+            return std::equal(this->uuid[0], this->uuid[15], b->uuid[0], b->uuid[15]);
+        }
+        operator!=(const &UUID b) const {
+            return ! (*this == b);
+        }
+    };
+    // Isolate local variables to this header
 
 
 
@@ -93,6 +124,7 @@ namespace BioUtils{
             String name;
             AnimationFrame * animationFrames;
             u_int8_t frameCount;
+            UUID uuid;
         public:
             Animation();
             Animation(const AnimationFrame * animationFrames, const u_int8_t & frameCount, const String & name);
@@ -116,6 +148,63 @@ namespace BioUtils{
 
     };
 
+    class TaskManager {
+        std::mutex taskMutex;
+        eTaskState taskState;
+        TaskHandle_t task;
+
+        TaskFunction_t functionToCall;
+        
+        void *parameters;
+
+        TickType_t callInterval;
+
+        protected:
+            void runningTask() {
+                functionToCall(parameters);
+            };
+            void beginTask() {
+                xTaskCreate(
+                    this->functionToCall,
+                "",
+                20000,
+                this->parameters,
+                2,
+                &this->task
+                );
+                };
+        public:
+            void setup(TaskFunction_t functionToCall, void* parameters, unsigned long callIntervalMS) {
+                this->setup(functionToCall, parameters, (TickType_t) callIntervalMS / portTICK_PERIOD_MS);
+            };
+            void setup(TaskFunction_t functionToCall, void* parameters, TickType_t callIntervalTicks) {
+                
+            };
+
+
+
+            eTaskState getState() {
+                std::scoped_lock(this->taskMutex);
+                return this->taskState;
+            }
+            bool suspendTask() {
+                std::scoped_lock(this->taskMutex);
+                if (this->taskState == eTaskState::eRunning) {
+                    vTaskSuspend(this->task);
+                    return true;
+                }
+                else return false;
+            }
+            bool delayTask(TickType_t ticks) {
+                std::scoped_lock(this->taskMutex);
+                if (this->taskState == eTaskState::eRunning) {
+                    vTaskDelay(this->task, ticks);
+                }
+            }
+            bool delayTask(unsigned long ms) {
+
+            }
+    };
 
     class LEDManager {
         protected:
@@ -153,6 +242,7 @@ namespace BioUtils{
 
         public:
             LEDManager();
+            ~LEDManager();
 
             bool setup(const uint8_t &ledPin = defaultLEDPin, const Animation &animation = PresetAnimation::Off);
 

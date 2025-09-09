@@ -124,6 +124,11 @@ namespace BioUtils{
 
     LEDManager::LEDManager(): animFrameIndex(0), animFrameStartTime(0), ledPin(0), ledState(false), invalidPin(false), isSetup(false), task(nullptr), taskState(eInvalid) {};
 
+    LEDManager::~LEDManager() {
+        this->setLED(BioUtils::LEDState::Off);
+        usedPins[this->ledPin] = false;
+    }
+
     bool LEDManager::setup(const uint8_t &ledPin, const Animation &animation){
         if (this->isSetup) {
             abort();
@@ -154,7 +159,8 @@ namespace BioUtils{
         std::scoped_lock lock(this->animationMutex);
 
         // If the animations are the same then skip
-        if (newAnimation.getName() == this->animation.getName()) return;
+        //if (newAnimation.getName() == this->animation.getName()) return;
+        if (newAnimation.uuid == this->animation.uuid) return;
         this->animation = newAnimation;
 
         this->animFrameIndex = 0;
